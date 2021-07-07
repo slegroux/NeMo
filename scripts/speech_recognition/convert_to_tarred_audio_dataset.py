@@ -107,8 +107,9 @@ parser.add_argument(
 parser.add_argument(
     '--max_duration',
     default=None,
+    required=True,
     type=float,
-    help='Maximum duration of audio clip in the dataset. By default, it is None and will not filter files.',
+    help='Maximum duration of audio clip in the dataset. By default, it is None and is required to be set.',
 )
 parser.add_argument(
     '--min_duration',
@@ -462,7 +463,7 @@ class ASRTarredDatasetBuilder:
         """Creates a tarball containing the audio files from `entries`.
         """
         new_entries = []
-        tar = tarfile.open(os.path.join(target_dir, f'audio_{shard_id}.tar'), mode='w')
+        tar = tarfile.open(os.path.join(target_dir, f'audio_{shard_id}.tar'), mode='w', dereference=True)
 
         count = dict()
         for entry in entries:

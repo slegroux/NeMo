@@ -8,11 +8,11 @@ variety of tasks like text classification, sentiment analysis, domain/intent det
 The model takes a text input and predicts a label/class for the whole sequence. Megatron-LM and most of the BERT-based encoders
 supported by HuggingFace including BERT, RoBERTa, and DistilBERT.
 
-An example script on how to train the model can be found here: `NeMo/examples/nlp/text_classification/text_classification_with_bert.py <https://github.com/NVIDIA/NeMo/blob/main/examples/nlp/text_classification/text_classification_with_bert.py>`__.
-The default configuration file for the model can be found at: `NeMo/examples/nlp/text_classification/conf/text_classification_config.yaml <https://github.com/NVIDIA/NeMo/blob/main/examples/nlp/text_classification/conf/text_classification_config.yaml>`__.
+An example script on how to train the model can be found here: `NeMo/examples/nlp/text_classification/text_classification_with_bert.py <https://github.com/NVIDIA/NeMo/blob/stable/examples/nlp/text_classification/text_classification_with_bert.py>`__.
+The default configuration file for the model can be found at: `NeMo/examples/nlp/text_classification/conf/text_classification_config.yaml <https://github.com/NVIDIA/NeMo/blob/stable/examples/nlp/text_classification/conf/text_classification_config.yaml>`__.
 
 There is also a Jupyter notebook which explains how to work with this model. We recommend you try this model in the Jupyter notebook (can run on `Google's Colab <https://colab.research.google.com/notebooks/intro.ipynb>`_.):
-`NeMo/tutorials/nlp/Text_Classification_Sentiment_Analysis.ipynb <https://colab.research.google.com/github/NVIDIA/NeMo/blob/r1.0.0rc1/tutorials/nlp/Text_Classification_Sentiment_Analysis.ipynb>`__.
+`NeMo/tutorials/nlp/Text_Classification_Sentiment_Analysis.ipynb <https://colab.research.google.com/github/NVIDIA/NeMo/blob/stable/tutorials/nlp/Text_Classification_Sentiment_Analysis.ipynb>`__.
 This tutorial shows an example of how run the Text Classification model on a sentiment analysis task. You may connect to an instance with a GPU (**Runtime** -> **Change runtime type** -> select **GPU** for the hardware accelerator) to run the notebook.
 
 Data Format
@@ -39,7 +39,7 @@ Dataset Conversion
 ------------------
 
 If your dataset is stored in another format, you need to convert it to NeMo's format to use this model. There are some conversion 
-scripts available for datasets: 
+scripts available for the following datasets:
 
 - SST2 :cite:`nlp-textclassify-socher2013`
 - IMDB :cite:`nlp-textclassify-maas2011`
@@ -48,13 +48,14 @@ scripts available for datasets:
 
 You can convert them from their original format to NeMo's format. To convert the original datasets to NeMo's format, use the ``examples/text_classification/data/import_datasets.py`` script:
 
-.. code::
+.. code:: python
+
     python import_datasets.py \
         --dataset_name DATASET_NAME \
         --target_data_dir TARGET_PATH \
         --source_data_dir SOURCE_PATH
 
-It reads the dataset specified by ``DATASET_NAME`` from ``SOURCE_PATH`` and converts it to NeMo's format.  It then saves the new 
+It reads the dataset specified by ``DATASET_NAME`` from ``SOURCE_PATH`` and converts it to NeMo's format.  It then saves the new
 dataset at ``TARGET_PATH``.
 
 Arguments:
@@ -78,13 +79,13 @@ Some datasets do not have the test set or their test set does not have any label
 Model Training
 --------------
 
-You may find an example of a config file to be used for training of the Text Classification model at `NeMo/examples/nlp/text_classification/conf/text_classification_config.yaml <https://github.com/NVIDIA/NeMo/blob/main/examples/nlp/text_classification/conf/text_classification_config.yaml>`__.
+You may find an example of a config file to be used for training of the Text Classification model at `NeMo/examples/nlp/text_classification/conf/text_classification_config.yaml <https://github.com/NVIDIA/NeMo/blob/stable/examples/nlp/text_classification/conf/text_classification_config.yaml>`__.
 You can change any of these parameters directly from the config file or update them with the command-line arguments.
 
-The config file of the Text Classification model contains three main sections of ``trainer``, ``exp_manager``, and ``model``. You can 
-find more details about the ``trainer`` and ``exp_manager`` at :doc:`../nlp_model.html`. Some sub-sections of the model section including 
-``tokenizer``, ``language_model``, and ``optim`` are shared among most of the NLP models. The details of these sections can be found 
-at :doc:`../nlp_model.html`.
+The config file of the Text Classification model contains three main sections of ``trainer``, ``exp_manager``, and ``model``. You can
+find more details about the ``trainer`` and ``exp_manager`` at :doc:`./nlp_model`. Some sub-sections of the model section including
+``tokenizer``, ``language_model``, and ``optim`` are shared among most of the NLP models. The details of these sections can be found
+at :doc:`./nlp_model`.
 
 Example of a command for training a Text Classification model on two GPUs for 50 epochs:
 
@@ -99,12 +100,23 @@ Example of a command for training a Text Classification model on two GPUs for 50
         optim.lr=0.0001 \
         model.nemo_path=<NEMO_FILE_PATH>
 
-By default, the final model after training is saved in the path specified by ``NEMO_FILE_PATH``.
+At the start of each training experiment, there is a printed log of the experiment specification including any parameters added or
+overridden via the command-line. It also shows additional information, such as which GPUs are available, where logs are saved,
+and some samples from the datasets with their corresponding inputs to the model. It also provides some stats on the lengths of
+sequences in the dataset.
+
+After each epoch, you should see a summary table of metrics on the validation set which include the following metrics:
+
+- :code:`Precision`
+- :code:`Recall`
+- :code:`F1`
+
+At the end of training, NeMo saves the last checkpoint at the path specified by ``NEMO_FILE_PATH`` in ``.nemo`` format.
 
 Model Arguments
 ^^^^^^^^^^^^^^^
 
-The following table lists some of the model's parameters you can use in the config files or set them from the command-line when 
+The following table lists some of the model's parameters you can use in the config files or set them from the command-line when
 training a model:
 
 +-----------------------------------------------+-----------------+--------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------+
@@ -112,7 +124,7 @@ training a model:
 +-----------------------------------------------+-----------------+--------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------+
 | **model.class_labels.class_labels_file**      | string          | ``null``                                               | Path to an optional file containing the labels; each line is the string label corresponding to a label.               |
 +-----------------------------------------------+-----------------+--------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------+
-| **model.dataset.num_classes**                 | int             | ``?``                                                  | Number of the categories or classes, ``0`` < ``Label`` < ``num_classes``.                                             |
+| **model.dataset.num_classes**                 | int             | ``Required``                                           | Number of the categories or classes, ``0`` < ``Label`` < ``num_classes``.                                             |
 +-----------------------------------------------+-----------------+--------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------+
 | **model.dataset.do_lower_case**               | boolean         | ``true`` for uncased models, ``false`` for cased       | Specifies if inputs should be made lower case, would be set automatically if pre-trained model is used.               |
 +-----------------------------------------------+-----------------+--------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------+
@@ -126,7 +138,7 @@ training a model:
 +-----------------------------------------------+-----------------+--------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------+
 | **model.classifier_head.fc_dropout**          | float           | ``0.1``                                                | Dropout ratio of the fully connected layers.                                                                          |
 +-----------------------------------------------+-----------------+--------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------+
-| **{training,validation,test}_ds.file_path**   | string          | ``??``                                                 | Path of the training ``.tsv`` file.                                                                                   |
+| **{training,validation,test}_ds.file_path**   | string          | ``Required``                                           | Path of the training ``.tsv`` file.                                                                                   |
 +-----------------------------------------------+-----------------+--------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------+
 | **{training,validation,test}_ds.batch_size**  | integer         | ``32``                                                 | Data loader's batch size.                                                                                             |
 +-----------------------------------------------+-----------------+--------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------+
@@ -142,27 +154,11 @@ training a model:
 +-----------------------------------------------+-----------------+--------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------+
 
 
-Training Procedure
-^^^^^^^^^^^^^^^^^^
-
-At the start of each training experiment, there is a printed log of the experiment specification including any parameters added or 
-overridden via the command-line. It also shows additional information, such as which GPUs are available, where logs are saved, 
-and some samples from the datasets with their corresponding inputs to the model. It also provides some stats on the lengths of 
-sequences in the dataset.
-
-After each epoch, you should see a summary table of metrics on the validation set which include the following metrics:
-
-- :code:``Precision``
-- :code:``Recall`
-- :code:``F1``
-
-At the end of training, NeMo saves the last checkpoint at the path specified in ``.nemo`` format.
-
 Model Evaluation and Inference
 ------------------------------
 
 After saving the model in ``.nemo`` format, you can load the model and perform evaluation or inference on the model. You can find 
-some examples in the example script: `NeMo/examples/nlp/text_classification/text_classification_with_bert.py <https://github.com/NVIDIA/NeMo/blob/main/examples/nlp/text_classification/text_classification_with_bert.py>`__.
+some examples in the example script: `NeMo/examples/nlp/text_classification/text_classification_with_bert.py <https://github.com/NVIDIA/NeMo/blob/stable/examples/nlp/text_classification/text_classification_with_bert.py>`__.
 
 References
 ----------

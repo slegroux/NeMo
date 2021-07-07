@@ -191,7 +191,7 @@ setuptools.setup(
         #  5 - Production/Stable
         #  6 - Mature
         #  7 - Inactive
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         # Indicate who your project is intended for
         'Intended Audience :: Developers',
         'Intended Audience :: Science/Research',
@@ -229,7 +229,7 @@ setuptools.setup(
     # Add in any packaged data.
     include_package_data=True,
     exclude=['tools', 'tests'],
-    package_data={'': ['*.tsv', '*.txt']},
+    package_data={'': ['*.tsv', '*.txt', '*.far']},
     zip_safe=False,
     # PyPI package information.
     keywords=__keywords__,
