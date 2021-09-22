@@ -41,7 +41,7 @@ __all__ = [
 ]
 
 """
-Below minimum version is required to access the "read_idxs" argument in 
+Below minimum version is required to access the "read_idxs" argument in
 dali.fn.readers.nemo_asr
 """
 __DALI_MINIMUM_VERSION__ = "1.4"
@@ -176,6 +176,8 @@ class _AudioTextDALIDataset(Iterator):
                 f"{self} received an unexpected device argument {device}. Supported values are: 'cpu', 'gpu'"
             )
 
+        device_id = device_id if device == 'gpu' else None
+
         self.batch_size = batch_size  # Used by NeMo
 
         self.device = device
@@ -220,7 +222,7 @@ class _AudioTextDALIDataset(Iterator):
             self.window_stride_sec = params['window_stride'] if 'window_stride' in params else 0.01
             self.sample_rate = params['sample_rate'] if 'sample_rate' in params else sample_rate
             self.window_size = int(self.window_size_sec * self.sample_rate)
-            self.window_stride = int(self.window_size_sec * self.sample_rate)
+            self.window_stride = int(self.window_stride_sec * self.sample_rate)
 
             normalize = params['normalize'] if 'normalize' in params else 'per_feature'
             if normalize == 'per_feature':  # Each freq channel independently
@@ -303,7 +305,7 @@ class _AudioTextDALIDataset(Iterator):
                     f"{self} received {self.mag_power} for the mag_power parameter." f" It must be either 1.0 or 2.0."
                 )
 
-            self.pad_to = params['pad_to'] if 'pad_to' in params else 16
+            self.pad_to = max(params['pad_to'], 1) if 'pad_to' in params else 16
             self.pad_value = params['pad_value'] if 'pad_value' in params else 0.0
 
         with self.pipe:
@@ -343,7 +345,7 @@ class _AudioTextDALIDataset(Iterator):
             else:
                 # Additive gaussian noise (dither)
                 if self.dither > 0.0:
-                    gaussian_noise = dali.fn.normal_distribution(device=self.device)
+                    gaussian_noise = dali.fn.normal_distribution(audio)
                     audio = audio + self.dither * gaussian_noise
 
                 # Preemphasis filter
