@@ -102,6 +102,13 @@ class MTBottleneckModel(MTEncDecModel):
             # for probabilistic latent variable models we also need variance
             self.hidden2latent_logv = build_linear_or_identity(self.encoder.hidden_size, self.latent_size)
 
+    def _validate_encoder_decoder_hidden_size(self):
+        """
+        Validate encoder and decoder hidden sizes, and enforce same size.
+        We support here encoder/decoder with different hidden_size, so do nothing.
+        """
+        pass
+
     def eval_epoch_end(self, outputs, mode):
         # call parent for logging
         super().eval_epoch_end(outputs, mode)
@@ -409,6 +416,7 @@ class MTBottleneckModel(MTEncDecModel):
         ground_truths = [self.decoder_tokenizer.ids_to_text(tgt) for tgt in np_tgt]
         ground_truths = [self.target_processor.detokenize(tgt.split(' ')) for tgt in ground_truths]
         num_non_pad_tokens = np.not_equal(np_tgt, self.decoder_tokenizer.pad_id).sum().item()
+
         return {
             'translations': translations,
             'ground_truths': ground_truths,
