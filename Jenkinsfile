@@ -1,7 +1,7 @@
 pipeline {
   agent {
         docker {
-      image 'gitlab-master.nvidia.com/dl/dgx/pytorch:21.10-py3-devel'
+      image 'nvcr.io/nvidia/pytorch:21.10-py3'
       args '--device=/dev/nvidia0 --gpus all --user 0:128 -v /home/TestData:/home/TestData -v $HOME/.cache/torch:/root/.cache/torch --shm-size=8g'
         }
   }
@@ -36,12 +36,6 @@ pipeline {
       }
     }
 
-    stage('PyTorch STFT Patch check') {
-      steps {
-        sh 'python /home/TestData/check_stft_patch.py --dir .'
-      }
-    }
-
     stage('Torch TTS unit tests') {
       when {
         anyOf {
@@ -59,13 +53,6 @@ pipeline {
       }
     }
 
-    // Revert once import guards are added by PTL or version comparing is fixed
-    stage('Install PyTorch Lighting 1.5 RC') {
-      steps{
-        sh 'pip install pytorch-lightning==1.5.0rc0 && sed -i "s/from pytorch_lightning.callbacks.quantization import QuantizationAwareTraining/try:\\n\\tfrom pytorch_lightning.callbacks.quantization import QuantizationAwareTraining\\nexcept:\\n\\tpass/g" /opt/conda/lib/python3.8/site-packages/pytorch_lightning/callbacks/__init__.py'
-      }
-    }
-
     stage('NeMo Installation') {
       steps {
         sh './reinstall.sh release'
@@ -80,7 +67,7 @@ pipeline {
 
     stage('PyTorch Lightning DDP Checks') {
       steps {
-        sh 'python "tests/core_ptl/check_for_ranks.py"'
+        sh 'CUDA_VISIBLE_DEVICES="0,1" python "tests/core_ptl/check_for_ranks.py"'
       }
     }
 
@@ -328,14 +315,24 @@ pipeline {
 
         stage('Speaker Diarization Inference') {
           steps {
-            sh 'python examples/speaker_tasks/diarization/speaker_diarize.py \
-            diarizer.oracle_num_speakers=2 \
-            diarizer.paths2audio_files=/home/TestData/an4_diarizer/audio_files.scp \
-            diarizer.path2groundtruth_rttm_files=/home/TestData/an4_diarizer/rttm_files.scp \
+            sh 'python examples/speaker_tasks/diarization/offline_diarization.py \
+	    diarizer.manifest_filepath=/home/TestData/an4_diarizer/an4_manifest.json \
             diarizer.speaker_embeddings.model_path=/home/TestData/an4_diarizer/spkr.nemo \
             diarizer.vad.model_path=/home/TestData/an4_diarizer/MatchboxNet_VAD_3x2.nemo \
             diarizer.out_dir=examples/speaker_tasks/diarization/speaker_diarization_results'
             sh 'rm -rf examples/speaker_tasks/diarization/speaker_diarization_results'
+          }
+        }
+
+        stage('Speaker Diarization with ASR Inference') {
+          steps {
+            sh 'python examples/speaker_tasks/diarization/offline_diarization_with_asr.py \
+	    diarizer.manifest_filepath=/home/TestData/an4_diarizer/an4_manifest.json \
+            diarizer.speaker_embeddings.model_path=/home/TestData/an4_diarizer/spkr.nemo \
+            diarizer.asr.model_path=QuartzNet15x5Base-En \
+            diarizer.asr.parameters.asr_based_vad=True \
+            diarizer.out_dir=examples/speaker_tasks/diarization/speaker_diarization_asr_results'
+            sh 'rm -rf examples/speaker_tasks/diarization/speaker_diarization_asr_results'
           }
         }
 
@@ -778,7 +775,10 @@ pipeline {
             data.train_ds.use_tarred_dataset=true \
             +decoder_trainer.fast_dev_run=true \
             decoder_exp_manager.create_checkpoint_callback=false \
-            data.train_ds.tar_metadata_file=/home/TestData/nlp/duplex_text_norm/tarred_small/metadata.json'
+            data.train_ds.tar_metadata_file=/home/TestData/nlp/duplex_text_norm/tarred_small/metadata.json \
+            data.test_ds.use_cache=false \
+            data.test_ds.data_path=/home/TestData/nlp/duplex_text_norm/small_test.tsv'
+
           }
         }
       }
