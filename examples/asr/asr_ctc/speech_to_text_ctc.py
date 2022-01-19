@@ -12,44 +12,61 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+import pytorch_lightning as pl
+from omegaconf import OmegaConf
+
+from nemo.collections.asr.models import EncDecCTCModel
+from nemo.core.config import hydra_runner
+from nemo.utils import logging
+from nemo.utils.exp_manager import exp_manager
+from IPython import embed
+
+
+=======
+>>>>>>> upstream/main
 """
-# Preparing the Tokenizer for the dataset
-Use the `process_asr_text_tokenizer.py` script under <NEMO_ROOT>/scripts/tokenizers/ in order to prepare the tokenizer.
-
-```sh
-python <NEMO_ROOT>/scripts/tokenizers/process_asr_text_tokenizer.py \
-        --manifest=<path to train manifest files, seperated by commas>
-        OR
-        --data_file=<path to text data, seperated by commas> \
-        --data_root="<output directory>" \
-        --vocab_size=<number of tokens in vocabulary> \
-        --tokenizer=<"spe" or "wpe"> \
-        --no_lower_case \
-        --spe_type=<"unigram", "bpe", "char" or "word"> \
-        --spe_character_coverage=1.0 \
-        --log
-```
-
 # Training the model
-```sh
-python speech_to_text_bpe.py \
+
+Basic run (on CPU for 50 epochs):
+    python examples/asr/asr_ctc/speech_to_text_ctc.py \
+        # (Optional: --config-path=<path to dir of configs> --config-name=<name of config without .yaml>) \
+        model.train_ds.manifest_filepath="<path to manifest file>" \
+        model.validation_ds.manifest_filepath="<path to manifest file>" \
+        trainer.gpus=0 \
+        trainer.max_epochs=50
+
+
+Add PyTorch Lightning Trainer arguments from CLI:
+    python speech_to_text_ctc.py \
+        ... \
+        +trainer.fast_dev_run=true
+
+Hydra logs will be found in "$(./outputs/$(date +"%y-%m-%d")/$(date +"%H-%M-%S")/.hydra)"
+PTL logs will be found in "$(./outputs/$(date +"%y-%m-%d")/$(date +"%H-%M-%S")/lightning_logs)"
+
+Override some args of optimizer:
+    python speech_to_text_ctc.py \
     # (Optional: --config-path=<path to dir of configs> --config-name=<name of config without .yaml>) \
-    model.train_ds.manifest_filepath=<path to train manifest> \
-    model.validation_ds.manifest_filepath=<path to val/test manifest> \
-    model.tokenizer.dir=<path to directory of tokenizer (not full path to the vocab file!)> \
-    model.tokenizer.type=<either bpe or wpe> \
-    trainer.gpus=-1 \
-    trainer.accelerator="ddp" \
-    trainer.max_epochs=100 \
-    model.optim.name="adamw" \
+    model.train_ds.manifest_filepath="./an4/train_manifest.json" \
+    model.validation_ds.manifest_filepath="./an4/test_manifest.json" \
+    trainer.gpus=2 \
+    trainer.max_epochs=2 \
+    model.optim.args.betas=[0.8,0.5] \
+    model.optim.args.weight_decay=0.0001
+
+Override optimizer entirely
+    python speech_to_text_ctc.py \
+    # (Optional: --config-path=<path to dir of configs> --config-name=<name of config without .yaml>) \
+    model.train_ds.manifest_filepath="./an4/train_manifest.json" \
+    model.validation_ds.manifest_filepath="./an4/test_manifest.json" \
+    trainer.gpus=2 \
+    trainer.max_epochs=2 \
+    model.optim.name=adamw \
     model.optim.lr=0.001 \
-    model.optim.betas=[0.9,0.999] \
-    model.optim.weight_decay=0.0001 \
-    model.optim.sched.warmup_steps=2000
-    exp_manager.create_wandb_logger=True \
-    exp_manager.wandb_logger_kwargs.name="<Name of experiment>" \
-    exp_manager.wandb_logger_kwargs.project="<Name of project>"
-```
+    ~model.optim.args \
+    +model.optim.args.betas=[0.8,0.5]\
+    +model.optim.args.weight_decay=0.0005
 
 # Fine-tune a model
 
@@ -66,19 +83,20 @@ https://docs.nvidia.com/deeplearning/nemo/user-guide/docs/en/main/asr/results.ht
 import pytorch_lightning as pl
 from omegaconf import OmegaConf
 
-from nemo.collections.asr.models.ctc_bpe_models import EncDecCTCModelBPE
+from nemo.collections.asr.models import EncDecCTCModel
 from nemo.core.config import hydra_runner
 from nemo.utils import logging
 from nemo.utils.exp_manager import exp_manager
 
 
-@hydra_runner(config_path="conf/citrinet/", config_name="config_bpe")
+@hydra_runner(config_path="../conf", config_name="config")
 def main(cfg):
     logging.info(f'Hydra config: {OmegaConf.to_yaml(cfg)}')
 
     trainer = pl.Trainer(**cfg.trainer)
+    embed()
     exp_manager(trainer, cfg.get("exp_manager", None))
-    asr_model = EncDecCTCModelBPE(cfg=cfg.model, trainer=trainer)
+    asr_model = EncDecCTCModel(cfg=cfg.model, trainer=trainer)
 
     # Initialize the weights of the model from another model, if provided via config
     asr_model.maybe_init_from_pretrained_checkpoint(cfg)
@@ -98,4 +116,4 @@ def main(cfg):
 
 
 if __name__ == '__main__':
-    main()
+    main()  # noqa pylint: disable=no-value-for-parameter
