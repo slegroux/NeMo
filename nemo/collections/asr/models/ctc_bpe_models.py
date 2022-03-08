@@ -14,7 +14,7 @@
 
 import copy
 import os
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 
 import torch
 from omegaconf import DictConfig, ListConfig, OmegaConf, open_dict
@@ -119,21 +119,21 @@ class EncDecCTCModelBPE(EncDecCTCModel, ASRBPEMixin):
         model = PretrainedModelInfo(
             pretrained_model_name="stt_en_conformer_ctc_small",
             description="For details about this model, please visit https://ngc.nvidia.com/catalog/models/nvidia:nemo:stt_en_conformer_ctc_small",
-            location="https://api.ngc.nvidia.com/v2/models/nvidia/nemo/stt_en_conformer_ctc_small/versions/1.0.0/files/stt_en_conformer_ctc_small.nemo",
+            location="https://api.ngc.nvidia.com/v2/models/nvidia/nemo/stt_en_conformer_ctc_small/versions/1.6.0/files/stt_en_conformer_ctc_small.nemo",
         )
         results.append(model)
 
         model = PretrainedModelInfo(
             pretrained_model_name="stt_en_conformer_ctc_medium",
             description="For details about this model, please visit https://ngc.nvidia.com/catalog/models/nvidia:nemo:stt_en_conformer_ctc_medium",
-            location="https://api.ngc.nvidia.com/v2/models/nvidia/nemo/stt_en_conformer_ctc_medium/versions/1.0.0/files/stt_en_conformer_ctc_medium.nemo",
+            location="https://api.ngc.nvidia.com/v2/models/nvidia/nemo/stt_en_conformer_ctc_medium/versions/1.6.0/files/stt_en_conformer_ctc_medium.nemo",
         )
         results.append(model)
 
         model = PretrainedModelInfo(
             pretrained_model_name="stt_en_conformer_ctc_large",
             description="For details about this model, please visit https://ngc.nvidia.com/catalog/models/nvidia:nemo:stt_en_conformer_ctc_large",
-            location="https://api.ngc.nvidia.com/v2/models/nvidia/nemo/stt_en_conformer_ctc_large/versions/1.0.0/files/stt_en_conformer_ctc_large.nemo",
+            location="https://api.ngc.nvidia.com/v2/models/nvidia/nemo/stt_en_conformer_ctc_large/versions/1.6.0/files/stt_en_conformer_ctc_large.nemo",
         )
         results.append(model)
 
@@ -197,7 +197,11 @@ class EncDecCTCModelBPE(EncDecCTCModel, ASRBPEMixin):
 
         # Set the new vocabulary
         with open_dict(cfg):
-            cfg.decoder.vocabulary = ListConfig(list(vocabulary.keys()))
+            # sidestepping the potential overlapping tokens issue in aggregate tokenizers
+            if self.tokenizer_type == "agg":
+                cfg.decoder.vocabulary = ListConfig(vocabulary)
+            else:
+                cfg.decoder.vocabulary = ListConfig(list(vocabulary.keys()))
 
         # Override number of classes if placeholder provided
         num_classes = cfg.decoder["num_classes"]
@@ -319,7 +323,7 @@ class EncDecCTCModelBPE(EncDecCTCModel, ASRBPEMixin):
         temporary_datalayer = self._setup_dataloader_from_config(config=DictConfig(dl_config))
         return temporary_datalayer
 
-    def change_vocabulary(self, new_tokenizer_dir: str, new_tokenizer_type: str):
+    def change_vocabulary(self, new_tokenizer_dir: Union[str, DictConfig], new_tokenizer_type: str):
         """
         Changes vocabulary of the tokenizer used during CTC decoding process.
         Use this method when fine-tuning on from pre-trained model.
@@ -328,22 +332,37 @@ class EncDecCTCModelBPE(EncDecCTCModel, ASRBPEMixin):
         model to learn capitalization, punctuation and/or special characters.
 
         Args:
-            new_tokenizer_dir: Path to the new tokenizer directory.
-            new_tokenizer_type: Either `bpe` or `wpe`. `bpe` is used for SentencePiece tokenizers,
+            new_tokenizer_dir: Directory path to tokenizer or a config for a new tokenizer (if the tokenizer type is `agg`)
+            new_tokenizer_type: Either `agg`, `bpe` or `wpe`. `bpe` is used for SentencePiece tokenizers,
                 whereas `wpe` is used for `BertTokenizer`.
+            new_tokenizer_cfg: A config for the new tokenizer. if provided, pre-empts the dir and type
 
         Returns: None
 
         """
-        if not os.path.isdir(new_tokenizer_dir):
-            raise NotADirectoryError(
-                f'New tokenizer dir must be non-empty path to a directory. But I got: {new_tokenizer_dir}'
-            )
+        if isinstance(new_tokenizer_dir, DictConfig):
+            if new_tokenizer_type == 'agg':
+                new_tokenizer_cfg = new_tokenizer_dir
+            else:
+                raise ValueError(
+                    f'New tokenizer dir should be a string unless the tokenizer is `agg`, but this tokenizer type is: {new_tokenizer_type}'
+                )
+        else:
+            new_tokenizer_cfg = None
 
-        if new_tokenizer_type.lower() not in ('bpe', 'wpe'):
-            raise ValueError(f'New tokenizer type must be either `bpe` or `wpe`')
+        if new_tokenizer_cfg is not None:
+            tokenizer_cfg = new_tokenizer_cfg
+        else:
+            if not os.path.isdir(new_tokenizer_dir):
+                raise NotADirectoryError(
+                    f'New tokenizer dir must be non-empty path to a directory. But I got: {new_tokenizer_dir}'
+                    f"New tokenizer dir must be non-empty path to a directory. But I got: {new_tokenizer_dir}"
+                )
 
-        tokenizer_cfg = OmegaConf.create({'dir': new_tokenizer_dir, 'type': new_tokenizer_type})
+            if new_tokenizer_type.lower() not in ('bpe', 'wpe'):
+                raise ValueError(f'New tokenizer type must be either `bpe` or `wpe`')
+
+            tokenizer_cfg = OmegaConf.create({'dir': new_tokenizer_dir, 'type': new_tokenizer_type})
 
         # Setup the tokenizer
         self._setup_tokenizer(tokenizer_cfg)
@@ -353,7 +372,11 @@ class EncDecCTCModelBPE(EncDecCTCModel, ASRBPEMixin):
 
         # Set the new vocabulary
         decoder_config = copy.deepcopy(self.decoder.to_config_dict())
-        decoder_config.vocabulary = ListConfig(list(vocabulary.keys()))
+        # sidestepping the potential overlapping tokens issue in aggregate tokenizers
+        if self.tokenizer_type == "agg":
+            decoder_config.vocabulary = ListConfig(vocabulary)
+        else:
+            decoder_config.vocabulary = ListConfig(list(vocabulary.keys()))
 
         decoder_num_classes = decoder_config['num_classes']
 
