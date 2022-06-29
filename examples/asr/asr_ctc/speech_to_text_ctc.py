@@ -12,6 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+import pytorch_lightning as pl
+from omegaconf import OmegaConf
+
+from nemo.collections.asr.models import EncDecCTCModel
+from nemo.core.config import hydra_runner
+from nemo.utils import logging
+from nemo.utils.exp_manager import exp_manager
+from IPython import embed
+
+
+=======
+>>>>>>> upstream/main
 """
 # Training the model
 
@@ -82,6 +95,7 @@ def main(cfg):
     logging.info(f'Hydra config: {OmegaConf.to_yaml(cfg)}')
 
     trainer = pl.Trainer(**cfg.trainer)
+    embed()
     exp_manager(trainer, cfg.get("exp_manager", None))
     asr_model = EncDecCTCModel(cfg=cfg.model, trainer=trainer)
 
