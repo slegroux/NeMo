@@ -77,7 +77,7 @@ if [ ${stage} -eq 4 ]; then
     pitch_fmin=30
     pitch_fmax=512
     n_speakers=1
-    batch_size=24
+    batch_size=48 #24
     python fastpitch_finetune.py --config-name=${fastpitch_config} \
         train_dataset=${train_manifest} \
         validation_datasets=${test_manifest} \
@@ -109,21 +109,24 @@ if [ ${stage} -eq 5 ]; then
 fi
 
 if [ ${stage} -eq 6 ]; then
-    specgen_ckpt_dir=result
-    manifest_path="6097_manifest_train_dur_5_mins_local.json"
-    hifigan_manifest_path="6097_manifest_train_dur_5_mins_local_hifigan.json"
-    mels_dir="6097_manifest_train_dur_5_mins_local_mels"
-    python hifigan_dataprep.py \
-        --manifest_path ${manifest_path} \
-        --mels_dir ${mels_dir} \
-        --specgen_ckpt_dir ${specgen_ckpt_dir} \
-        --hifigan_manifest_path ${hifigan_manifest_path}
+    # hifigan data prep for train & validation sets
+    mels_dir=${sup_data_folder}/mels
+    manifest_path=${train_manifest}
+    for manifest in ${train_manifest} ${test_manifest}; do
+        # echo $(basename ${manifest%.*}).hifigan.json
+        python hifigan_dataprep.py \
+            --manifest_path ${manifest} \
+            --mels_dir ${mels_dir} \
+            --specgen_ckpt_dir ${exp_dir}_finetune \
+            --hifigan_manifest_path ${dataset}/$(basename ${manifest%.*}).hifigan.json
+    done
 fi
 
 if [ ${stage} -eq 7 ]; then
-    train="./hifigan_train_ft.json"
-    val="./hifigan_val_ft.json"
-    exp="hifigan_ft"
+    # hifigan fine-tuning
+    train=${dataset}/manifest.train.hifigan.json
+    val=${dataset}/manifest.test.hifigan.json
+    pretrained_checkpoint="tts_hifigan" # pre-trained nvidia model
 
     python hifigan_finetune.py \
         --config-name=hifigan.yaml \
@@ -133,10 +136,13 @@ if [ ${stage} -eq 7 ]; then
         ~model.optim.sched \
         train_dataset=${train} \
         validation_datasets=${val} \
-        exp_manager.exp_dir=${exp} \
-        +init_from_pretrained_model=tts_hifigan \
+        exp_manager.exp_dir=test_finetune_hifigan \
+        +init_from_pretrained_model=${pretrained_checkpoint} \
         trainer.check_val_every_n_epoch=10 \
         trainer.devices=8 \
         model/train_ds=train_ds_finetune \
         model/validation_ds=val_ds_finetune
+        # +exp_manager.create_wandb_logger=true \
+        # +exp_manager.wandb_logger_kwargs.name=${wandb_run_name} \
+        # +exp_manager.wandb_logger_kwargs.project=${wandb_project_name}_finetune_hifigan
 fi
