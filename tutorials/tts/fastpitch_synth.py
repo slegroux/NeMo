@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 # 06/2022 <sylvain.legroux@gmail.com>
 
-import torch
-from nemo.collections.tts.helpers.helpers import regulate_len
-from nemo.collections.tts.models import FastPitchModel
-from nemo.collections.tts.models import UnivNetModel
-from nemo.collections.tts.models import HifiGanModel
-import soundfile as sf
 import argparse
 from pathlib import Path
+import logging
+logging.disable(logging.CRITICAL)
+import soundfile as sf
+import torch
+from nemo.collections.tts.helpers.helpers import regulate_len
+from nemo.collections.tts.models import FastPitchModel, HifiGanModel, UnivNetModel
+logging.getLogger('nemo_logger').setLevel(logging.CRITICAL)
 
 def infer(spec_gen_model, vocoder_model, str_input, speaker=None):
     """
@@ -67,6 +68,7 @@ def get_args():
     # tts_en_fastpitch_multispeaker
     parser.add_argument("--spectrogram_generator", type=str, default="tts_en_fastpitch_multispeaker.nemo")
     parser.add_argument("--specgen_ckpt_dir")
+    parser.add_argument("--vocoder_ckpt_dir")
     # tts_en_hifitts_hifigan_ft_fastpitch
     # "tts_en_libritts_univnet"
     parser.add_argument("--vocoder", type=str, default="tts_en_hifitts_hifigan_ft_fastpitch")
@@ -74,6 +76,7 @@ def get_args():
     parser.add_argument("--output_audio", default='test.wav')
     parser.add_argument("--speaker", type=int, default=1)
     parser.add_argument("--pitch_factor", type=float, default=1.0)
+    parser.add_argument("--pitch_scale", type=float, default=0.0)
     parser.add_argument("--speed_factor", type=float, default=1.0)
     parser.add_argument("--sr", type=int)
     return parser.parse_args()
@@ -85,7 +88,7 @@ if __name__ == "__main__":
     # spec_generator = FastPitchModel.from_pretrained(args.spectrogram_generator, override_config_path=None)
     # spec_generator = FastPitchModel.restore_from(args.spectrogram_generator, override_config_path=None)
     if args.specgen_ckpt_dir:
-        last_ckpt = get_best_ckpt_from_last_run("./", args.specgen_ckpt_dir)
+        last_ckpt = get_best_ckpt_from_last_run("./", args.specgen_ckpt_dir, model_name='FastPitch')
         spec_generator = FastPitchModel.load_from_checkpoint(last_ckpt)
     else:
         spec_generator = FastPitchModel.from_pretrained(args.spectrogram_generator, override_config_path=None)
@@ -93,9 +96,13 @@ if __name__ == "__main__":
 
     # vocoder = UnivNetModel.from_pretrained(model_name=args.vocoder)
     # vocoder = HifiGanModel.restore_from(args.vocoder)
-    vocoder = HifiGanModel.from_pretrained(args.vocoder)
+    if args.vocoder_ckpt_dir:
+        last_ckpt = get_best_ckpt_from_last_run("./", args.vocoder_ckpt_dir, model_name='HifiGan')
+        vocoder = HifiGanModel.load_from_checkpoint(last_ckpt)
+    else:
+        vocoder = HifiGanModel.from_pretrained(args.vocoder)
     vocoder.eval().cuda()
-    # audio = synthesize_speech(spec_generator, vocoder, args.input_text, pitch_factor=args.pitch_factor, speed_factor=args.speed_factor, speaker=args.speaker)
-    spectrogram, audio = infer(spec_generator, vocoder, args.input_text, speaker=None)
-    # sf.write(args.output_audio, audio[0].detach().cpu().numpy(), args.sr)
-    sf.write(args.output_audio, audio[0], args.sr)
+    audio = synthesize_speech(spec_generator, vocoder, args.input_text, pitch_scale=args.pitch_scale, pitch_factor=args.pitch_factor, speed_factor=args.speed_factor, speaker=args.speaker)
+    sf.write(args.output_audio, audio[0].detach().cpu().numpy(), args.sr)
+    # spectrogram, audio = infer(spec_generator, vocoder, args.input_text, speaker=None)
+    # sf.write(args.output_audio, audio[0], args.sr)
