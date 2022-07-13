@@ -1,17 +1,18 @@
 #!/usr/bin/env python
 # (c) Sylvain Le Groux <slegroux@ccrma.stanford.edu>
 
+import copy
+
 import pytorch_lightning as pl
-from omegaconf import OmegaConf
+from IPython import embed
+from omegaconf import DictConfig, OmegaConf
+from ruamel.yaml import YAML
 
 from nemo.collections.asr.models import EncDecCTCModel
 from nemo.core.config import hydra_runner
 from nemo.utils import logging
 from nemo.utils.exp_manager import exp_manager
-from ruamel.yaml import YAML
-from omegaconf import DictConfig
-import copy
-from IPython import embed
+
 
 @hydra_runner(config_path="conf", config_name="config")
 def main(cfg):    

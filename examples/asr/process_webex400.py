@@ -5,16 +5,17 @@ import argparse
 import fnmatch
 import json
 import logging
+import multiprocessing as mp
 import os
 import subprocess
 import tarfile
 import urllib.request
 from pathlib import Path
+
 import pandas as pd
-import multiprocessing as mp
+import swifter
 from sox import Transformer
 from tqdm import tqdm
-import swifter
 
 logging.basicConfig(level=logging.DEBUG)
 

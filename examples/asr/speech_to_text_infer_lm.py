@@ -10,15 +10,16 @@ This script serves three goals:
     (3) Serves as CI test for pre-trained checkpoint
 """
 
-from argparse import ArgumentParser
 import os
+from argparse import ArgumentParser
+
 import torch
+from IPython import embed
+
 from nemo.collections.asr.metrics.wer import WER, word_error_rate
 from nemo.collections.asr.models import EncDecCTCModel
 from nemo.collections.asr.modules import BeamSearchDecoderWithLM
 from nemo.utils import logging
-from IPython import embed
-
 
 try:
     from torch.cuda.amp import autocast

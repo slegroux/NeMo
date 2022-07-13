@@ -14,14 +14,13 @@
 
 <<<<<<< HEAD
 import pytorch_lightning as pl
+from IPython import embed
 from omegaconf import OmegaConf
 
 from nemo.collections.asr.models import EncDecCTCModel
 from nemo.core.config import hydra_runner
 from nemo.utils import logging
 from nemo.utils.exp_manager import exp_manager
-from IPython import embed
-
 
 =======
 >>>>>>> upstream/main
@@ -81,13 +80,7 @@ https://docs.nvidia.com/deeplearning/nemo/user-guide/docs/en/main/asr/results.ht
 
 """
 
-import pytorch_lightning as pl
-from omegaconf import OmegaConf
 
-from nemo.collections.asr.models import EncDecCTCModel
-from nemo.core.config import hydra_runner
-from nemo.utils import logging
-from nemo.utils.exp_manager import exp_manager
 
 
 @hydra_runner(config_path="../conf", config_name="config")
