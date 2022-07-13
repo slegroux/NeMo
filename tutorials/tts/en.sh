@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# 07/2022 sylvain.legroux@gmail.com
+
 export OMP_NUM_THREADS=1
 export HYDRA_FULL_ERROR=1
 export PS1='\u@\h: '
@@ -44,6 +46,7 @@ if [ ${stage} -eq 0 ]; then
 fi
 
 if [ ${stage} -eq 100 ]; then
+    echo "[INFO] train/test split"
     /home/syl20/maui/scripts/datasets/train_test_split_file.py --train_size 0.99 --output_dir ${output_dir} ${manifest_filepath} 
 fi
 

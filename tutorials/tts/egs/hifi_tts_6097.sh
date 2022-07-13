@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# 07/2022 sylvain.legroux@gmail.com
+
 export OMP_NUM_THREADS=1
 set -x
 set -a
