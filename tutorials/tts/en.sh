@@ -4,7 +4,7 @@
 export OMP_NUM_THREADS=1
 export HYDRA_FULL_ERROR=1
 export PS1='\u@\h: '
-set -x
+# set -x
 
 stage=$1
 
@@ -29,12 +29,18 @@ stage=$1
 
 : ${DATA:="/home/syl20/data"}
 : ${sup_data_folder:=${dataset}/sup_data}
+: ${output_dir:=${dataset}}
 : ${config_path:="conf"}
 : ${fastpitch_config:="fastpitch_align_v1.05.yaml"}
 : ${hifigan_config:="hifigan.yaml"}
 : ${wandb_project_name:=$(basename ${dataset})}
 : ${wandb_run_name:=${fastpitch_config}}
 : ${exp_dir:=${wandb_project_name}}
+: ${sid:="dc52e6a0-a9b8-3e0a-ace7-78b00108a7b7"} # kareem
+: ${total_dur:=300}
+: ${train_size:=0.98}
+: ${min_dur:=3}
+: ${max_dur:=10}
 
 # additional files for phonemes, heteronyms & abbrv
 : ${helper_dir:="/home/syl20/slgNM/tutorials/tts/tts_dataset_files"}
@@ -42,12 +48,15 @@ stage=$1
 
 if [ ${stage} -eq 0 ]; then
     # manifest + normalization
-    python ${dataset}/metadata2manifest.py --input ${metadata} --output ${manifest}
+    python ${dataset}/metadata2manifest.py --sid ${sid} ${metadata_filepath} ${pre_manifest_filepath}
 fi
 
 if [ ${stage} -eq 100 ]; then
+    echo "[INFO] filter manifest duration"
+    python ~/maui/scripts/datasets/manifest_filter.py --total_dur ${total_dur} --min_dur ${min_dur} --max_dur ${max_dur} ${pre_manifest_filepath} ${manifest_filepath}
+    python ~/maui/scripts/datasets/manifest_duration.py ${manifest_filepath}
     echo "[INFO] train/test split"
-    /home/syl20/maui/scripts/datasets/train_test_split_file.py --train_size 0.99 --output_dir ${output_dir} ${manifest_filepath} 
+    python /home/syl20/maui/scripts/datasets/train_test_split_file.py --train_size ${train_size} --output_dir ${output_dir} ${manifest_filepath}
 fi
 
 if [ ${stage} -eq 1 ]; then
@@ -96,7 +105,7 @@ if [ ${stage} -eq 4 ]; then
     # pitch_fmax=512
     # : {n_speakers:=1}
     # : {fine_tune_bs:=48} #24
-    fine_tune_bs=256
+    : {fastpitch_fine_tune_bs:=48}
     n_speakers=1
     python fastpitch_finetune.py --config-name=${fastpitch_config} \
         train_dataset=${train_manifest} \
@@ -107,10 +116,10 @@ if [ ${stage} -eq 4 ]; then
         whitelist_path=${helper_dir}/lj_speech.tsv \
         exp_manager.exp_dir=${exp_dir}_finetune_fastpitch \
         +init_from_nemo_model=${pretrained_model} \
-        +trainer.max_steps=1000 ~trainer.max_epochs \
+        +trainer.max_steps=5000 ~trainer.max_epochs \
         trainer.check_val_every_n_epoch=25 \
-        model.train_ds.dataloader_params.batch_size=${fine_tune_bs} \
-        model.validation_ds.dataloader_params.batch_size=${fine_tune_bs} \
+        model.train_ds.dataloader_params.batch_size=${fastpitch_fine_tune_bs} \
+        model.validation_ds.dataloader_params.batch_size=${fastpitch_fine_tune_bs} \
         model.n_speakers=1 \
         model.optim.lr=2e-4 \
         ~model.optim.sched model.optim.name=adam trainer.devices=8 trainer.strategy=ddp \
@@ -165,10 +174,11 @@ if [ ${stage} -eq 7 ]; then
     : ${pretrained_checkpoint:="tts_hifigan"} # pre-trained nvidia model
     # exp_dir="test_finetune_hifigan"
     : ${hifigan_finetune_bs:=64}
+
     python hifigan_finetune.py \
         --config-name=${hifigan_config} \
         model.train_ds.dataloader_params.batch_size=${hifigan_finetune_bs} \
-        model.max_steps=1000 \
+        model.max_steps=2500 \
         model.optim.lr=0.00001 \
         ~model.optim.sched \
         train_dataset=${train_manifest_hifigan} \
@@ -208,6 +218,6 @@ if [ ${stage} -eq 9 ]; then
         --pitch_factor ${pitch_factor} \
         --pitch_scale ${pitch_scale} \
         --input_text "${synth_text}" \
-        --output_audio "${text_underscore}-sp${speed_factor}-pf${pitch_factor}-ps${pitch_scale}.wav" \
+        --output_audio "${exp_dir}_${text_underscore}-sp${speed_factor}-pf${pitch_factor}-ps${pitch_scale}.wav" \
         --sr 22050
 fi
