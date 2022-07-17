@@ -39,9 +39,8 @@ max_dur=10
 # 9: test fine-tuned models
 # for stage in 100 4 6 7 9; do
 
-# for stage in 100 4 6 7 9; do
-for stage in 7 9; do
-    time ./en.sh ${stage}
+for stage in 100 4 6 7 9; do
+    time ./en.sh ${stage} | tee omar.log
 done
 
 # TODO:

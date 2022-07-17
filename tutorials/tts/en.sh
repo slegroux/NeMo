@@ -4,7 +4,7 @@
 export OMP_NUM_THREADS=1
 export HYDRA_FULL_ERROR=1
 export PS1='\u@\h: '
-# set -x
+set -x
 
 stage=$1
 
@@ -111,7 +111,7 @@ if [ ${stage} -eq 4 ]; then
         train_dataset=${train_manifest} \
         validation_datasets=${test_manifest} \
         sup_data_path=${sup_data_folder} \
-        phoneme_dict_path=${helper_dir}/cmudict-0.7b_nv22.01 \
+        phoneme_dict_path=${helper_dir}/cmudict-0.7b_nv22.07 \
         heteronyms_path=${helper_dir}/heteronyms-030921 \
         whitelist_path=${helper_dir}/lj_speech.tsv \
         exp_manager.exp_dir=${exp_dir}_finetune_fastpitch \
