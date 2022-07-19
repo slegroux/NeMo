@@ -163,7 +163,7 @@ if [ ${stage} -eq 7 ]; then
     python hifigan_finetune.py \
         --config-name=${hifigan_config} \
         model.train_ds.dataloader_params.batch_size=${hifigan_finetune_bs} \
-        model.max_steps=${hifigan_finetune} \
+        model.max_steps=${hifigan_finetune_steps} \
         model.optim.lr=0.00001 \
         ~model.optim.sched \
         train_dataset=${train_manifest_hifigan} \

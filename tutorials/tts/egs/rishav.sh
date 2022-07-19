@@ -49,7 +49,7 @@ hifigan_finetune_steps=1000
 # 9: test fine-tuned models
 # for stage in 100 4 6 7 9; do
 
-for stage in 100 4 6 7 9; do
+for stage in 7 9; do
     time ./en.sh ${stage} > >(tee -a ${user}_stdout.log) 2> >(tee -a ${user}_stderr.log >&2)
 done
 
