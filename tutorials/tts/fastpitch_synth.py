@@ -41,7 +41,6 @@ def infer(spec_gen_model, vocoder_model, str_input, speaker=None):
     return spectrogram, audio
 
 def get_best_ckpt_from_last_run(base_dir, checkpoints_dir, model_name='FastPitch'):
-
     exp_dirs = list([i for i in (Path(base_dir) / checkpoints_dir / model_name).iterdir() if i.is_dir()])
     last_exp_dir = sorted(exp_dirs)[-1]
     last_checkpoint_dir = last_exp_dir / "checkpoints"

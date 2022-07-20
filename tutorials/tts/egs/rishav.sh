@@ -7,7 +7,7 @@ set -a
 
 # DATA PATHS
 user="rishav"
-time="30min"
+time="all"
 data_root=$DATA/en/
 dataset=${data_root}/webex_speakers/en
 pre_manifest_filepath=${dataset}/${user}.json
@@ -20,7 +20,7 @@ sup_data_folder=${dataset}/${manifest_name}/sup_data
 
 # FILTER UTTERANCES BY DURATION
 min_dur=1.0
-max_dur=10.0
+max_dur=30.0
 total_dur=3600.0 #1h
 
 # TRAIN/TEST FASTPITCH
@@ -31,7 +31,7 @@ test_manifest=${output_dir}/${manifest_name}.test.json
 # TRAIN/TEST HIFIGAN
 train_manifest_hifigan=${output_dir}/${manifest_name}.train.hifigan.json
 test_manifest_hifigan=${output_dir}/${manifest_name}.test.hifigan.json
-synth_text="and in part because of our strategic and diplomatic partnerships"
+synth_text="how long they were on the meeting for"
 # specgen_ckpt_dir=${exp_dir}_finetune
 # n_speakers=1
 
@@ -47,9 +47,9 @@ hifigan_finetune_steps=1000
 # 6: hifigan data prep
 # 7: hifigan fine-tune
 # 9: test fine-tuned models
-# for stage in 100 4 6 7 9; do
 
-for stage in 7 9; do
+
+for stage in 100 4 6 7 9; do
     time ./en.sh ${stage} > >(tee -a ${user}_stdout.log) 2> >(tee -a ${user}_stderr.log >&2)
 done
 
