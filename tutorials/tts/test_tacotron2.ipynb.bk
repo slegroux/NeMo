@@ -1,0 +1,246 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "%load_ext autoreload\n",
+    "%autoreload 2\n",
+    "from nemo.collections.asr.data.audio_to_text import AudioToCharDataset\n",
+    "from torch.utils.data import DataLoader\n",
+    "from hydra.utils import instantiate\n",
+    "from omegaconf import OmegaConf\n",
+    "import dataclasses\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "conf = OmegaConf.load('conf/tacotron2.yaml')\n",
+    "# print(OmegaConf.to_yaml(conf))\n",
+    "cfg = OmegaConf.create(conf)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "{'name': 'Tacotron2', 'sample_rate': 22050, 'labels': [' ', '!', '\"', \"'\", '(', ')', ',', '-', '.', ':', ';', '?', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', ']', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'], 'n_fft': 1024, 'n_mels': 80, 'fmax': 8000, 'n_stride': 256, 'pad_value': -11.52, 'train_dataset': '???', 'validation_datasets': '???', 'model': {'labels': '${labels}', 'train_ds': {'dataset': {'_target_': 'nemo.collections.asr.data.audio_to_text.AudioToCharDataset', 'manifest_filepath': '${train_dataset}', 'max_duration': None, 'min_duration': 0.1, 'trim': False, 'int_values': False, 'normalize': True, 'sample_rate': '${sample_rate}'}, 'dataloader_params': {'drop_last': False, 'shuffle': True, 'batch_size': 48, 'num_workers': 4}}, 'validation_ds': {'dataset': {'_target_': 'nemo.collections.asr.data.audio_to_text.AudioToCharDataset', 'manifest_filepath': '${validation_datasets}', 'max_duration': None, 'min_duration': 0.1, 'int_values': False, 'normalize': True, 'sample_rate': '${sample_rate}', 'trim': False}, 'dataloader_params': {'drop_last': False, 'shuffle': False, 'batch_size': 48, 'num_workers': 8}}, 'preprocessor': {'_target_': 'nemo.collections.asr.parts.features.FilterbankFeatures', 'dither': 0.0, 'nfilt': '${n_mels}', 'frame_splicing': 1, 'highfreq': '${fmax}', 'log': True, 'log_zero_guard_type': 'clamp', 'log_zero_guard_value': 1e-05, 'lowfreq': 0, 'mag_power': 1.0, 'n_fft': '${n_fft}', 'n_window_size': 1024, 'n_window_stride': '${n_stride}', 'normalize': None, 'pad_to': 16, 'pad_value': '${pad_value}', 'preemph': None, 'sample_rate': '${sample_rate}', 'window': 'hann'}, 'encoder': {'_target_': 'nemo.collections.tts.modules.tacotron2.Encoder', 'encoder_kernel_size': 5, 'encoder_n_convolutions': 3, 'encoder_embedding_dim': 512}, 'decoder': {'_target_': 'nemo.collections.tts.modules.tacotron2.Decoder', 'decoder_rnn_dim': 1024, 'encoder_embedding_dim': '${model.encoder.encoder_embedding_dim}', 'gate_threshold': 0.5, 'max_decoder_steps': 1000, 'n_frames_per_step': 1, 'n_mel_channels': '${n_mels}', 'p_attention_dropout': 0.1, 'p_decoder_dropout': 0.1, 'prenet_dim': 256, 'prenet_p_dropout': 0.5, 'attention_dim': 128, 'attention_rnn_dim': 1024, 'attention_location_kernel_size': 31, 'attention_location_n_filters': 32, 'early_stopping': True}, 'postnet': {'_target_': 'nemo.collections.tts.modules.tacotron2.Postnet', 'n_mel_channels': '${n_mels}', 'p_dropout': 0.5, 'postnet_embedding_dim': 512, 'postnet_kernel_size': 5, 'postnet_n_convolutions': 5}, 'optim': {'name': 'adam', 'lr': 0.001, 'weight_decay': 1e-06, 'sched': {'name': 'CosineAnnealing', 'min_lr': 1e-05}}}, 'trainer': {'gpus': 1, 'max_epochs': '???', 'num_nodes': 1, 'accelerator': 'ddp', 'accumulate_grad_batches': 1, 'checkpoint_callback': False, 'logger': False, 'gradient_clip_val': 1.0, 'flush_logs_every_n_steps': 1000, 'log_every_n_steps': 200, 'check_val_every_n_epoch': 25}, 'exp_manager': {'exp_dir': None, 'name': '${name}', 'create_tensorboard_logger': True, 'create_checkpoint_callback': True}}\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(cfg)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "FilterbankConfig(dither=0.0, nfilt=80, frame_splicing=1, highfreq=8000, log=True, log_zero_guard_type='clamp', log_zero_guard_value=1e-05, lowfreq=0, mag_power=1.0, n_fft=1024, n_window_size=1024, n_window_stride=256, normalize=None, pad_to=16, pad_value=-11.52, preemph=None, sample_rate=16000.0, window='hann')\n"
+     ]
+    }
+   ],
+   "source": [
+    "from dataclasses import dataclass\n",
+    "from typing import Optional\n",
+    "# print(cfg.model.preprocessor)\n",
+    "@dataclass\n",
+    "class FilterbankConfig:\n",
+    "    dither:float = 0.0\n",
+    "    nfilt:int = 80\n",
+    "    frame_splicing:int = 1\n",
+    "    highfreq:float = 8000\n",
+    "    log:bool = True\n",
+    "    log_zero_guard_type:str = 'clamp'\n",
+    "    log_zero_guard_value:float = 1e-05\n",
+    "    lowfreq:float = 0\n",
+    "    mag_power:float = 1.0\n",
+    "    n_fft:int = 1024\n",
+    "    n_window_size:int = 1024\n",
+    "    n_window_stride:int = 256\n",
+    "    normalize:Optional[bool] = None\n",
+    "    pad_to:int = 16\n",
+    "    pad_value:float = -11.52\n",
+    "    preemph:Optional[bool] = None\n",
+    "    sample_rate:float = 16000.0\n",
+    "    window:str = 'hann'\n",
+    "    \n",
+    "# filterbank_cfg = FilterbankConfig()\n",
+    "print(FilterbankConfig())\n",
+    "filterbank_dict = FilterbankConfig()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "dither: 0.0\n",
+      "nfilt: 80\n",
+      "frame_splicing: 1\n",
+      "highfreq: 8000.0\n",
+      "log: true\n",
+      "log_zero_guard_type: clamp\n",
+      "log_zero_guard_value: 1.0e-05\n",
+      "lowfreq: 0.0\n",
+      "mag_power: 1.0\n",
+      "n_fft: 1024\n",
+      "n_window_size: 1024\n",
+      "n_window_stride: 256\n",
+      "normalize: null\n",
+      "pad_to: 16\n",
+      "pad_value: -11.52\n",
+      "preemph: null\n",
+      "sample_rate: 16000.0\n",
+      "window: hann\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "from omegaconf import OmegaConf\n",
+    "f = OmegaConf.structured(FilterbankConfig())\n",
+    "print(OmegaConf.to_yaml(f))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "[NeMo I 2022-01-21 18:14:26 features:266] PADDING: 16\n",
+      "[NeMo I 2022-01-21 18:14:26 features:283] STFT using torch\n"
+     ]
+    },
+    {
+     "ename": "TypeError",
+     "evalue": "unsupported operand type(s) for /: 'DictConfig' and 'int'",
+     "output_type": "error",
+     "traceback": [
+      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+      "\u001b[0;31mTypeError\u001b[0m                                 Traceback (most recent call last)",
+      "\u001b[0;32m/tmp/ipykernel_36680/954099897.py\u001b[0m in \u001b[0;36m<module>\u001b[0;34m\u001b[0m\n\u001b[1;32m      1\u001b[0m \u001b[0;31m# %%\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m      2\u001b[0m \u001b[0;32mfrom\u001b[0m \u001b[0mnemo\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mcollections\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0masr\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mparts\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mpreprocessing\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mfeatures\u001b[0m \u001b[0;32mimport\u001b[0m \u001b[0mFilterbankFeatures\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m----> 3\u001b[0;31m \u001b[0mfilter_bank\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mFilterbankFeatures\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mf\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m      4\u001b[0m \u001b[0;31m# print(type(cfg.model.preprocessor))\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m      5\u001b[0m \u001b[0;31m# print(type(cfg))\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m~/slgNM/nemo/collections/asr/parts/preprocessing/features.py\u001b[0m in \u001b[0;36m__init__\u001b[0;34m(self, sample_rate, n_window_size, n_window_stride, window, normalize, n_fft, preemph, nfilt, lowfreq, highfreq, log, log_zero_guard_type, log_zero_guard_value, dither, pad_to, max_duration, frame_splicing, exact_pad, stft_exact_pad, stft_conv, pad_value, mag_power, use_grads, rng, nb_augmentation_prob, nb_max_freq)\u001b[0m\n\u001b[1;32m    311\u001b[0m         \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mpreemph\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mpreemph\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    312\u001b[0m         \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mpad_to\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mpad_to\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 313\u001b[0;31m         \u001b[0mhighfreq\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mhighfreq\u001b[0m \u001b[0;32mor\u001b[0m \u001b[0;34m(\u001b[0m\u001b[0msample_rate\u001b[0m \u001b[0;34m/\u001b[0m \u001b[0;36m2\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    314\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    315\u001b[0m         filterbanks = torch.tensor(\n",
+      "\u001b[0;31mTypeError\u001b[0m: unsupported operand type(s) for /: 'DictConfig' and 'int'"
+     ]
+    }
+   ],
+   "source": [
+    "# %%\n",
+    "from nemo.collections.asr.parts.preprocessing.features import FilterbankFeatures\n",
+    "filter_bank = FilterbankFeatures(f)\n",
+    "# print(type(cfg.model.preprocessor))\n",
+    "# print(type(cfg))\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\u001b[0;31mInit signature:\u001b[0m\n",
+      "\u001b[0mFilterbankFeatures\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0msample_rate\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;36m16000\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mn_window_size\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;36m320\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mn_window_stride\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;36m160\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mwindow\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;34m'hann'\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mnormalize\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;34m'per_feature'\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mn_fft\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;32mNone\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mpreemph\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;36m0.97\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mnfilt\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;36m64\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mlowfreq\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;36m0\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mhighfreq\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;32mNone\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mlog\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;32mTrue\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mlog_zero_guard_type\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;34m'add'\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mlog_zero_guard_value\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;36m5.960464477539063e-08\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mdither\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;36m1e-05\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mpad_to\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;36m16\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mmax_duration\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;36m16.7\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mframe_splicing\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;36m1\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mexact_pad\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;32mFalse\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mstft_exact_pad\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;32mFalse\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mstft_conv\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;32mFalse\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mpad_value\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;36m0\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mmag_power\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;36m2.0\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0muse_grads\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;32mFalse\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mrng\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;32mNone\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mnb_augmentation_prob\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;36m0.0\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m    \u001b[0mnb_max_freq\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;36m4000\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\n",
+      "\u001b[0;34m\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;31mDocstring:\u001b[0m     \n",
+      "Featurizer that converts wavs to Mel Spectrograms.\n",
+      "See AudioToMelSpectrogramPreprocessor for args.\n",
+      "\u001b[0;31mInit docstring:\u001b[0m Initializes internal Module state, shared by both nn.Module and ScriptModule.\n",
+      "\u001b[0;31mFile:\u001b[0m           ~/slgNM/nemo/collections/asr/parts/preprocessing/features.py\n",
+      "\u001b[0;31mType:\u001b[0m           type\n",
+      "\u001b[0;31mSubclasses:\u001b[0m     \n"
+     ]
+    }
+   ],
+   "source": [
+    "?FilterbankFeatures"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "interpreter": {
+   "hash": "0291b6b5d3a6d39e00cbf9c891e8927d6d7709adb59207d6fc4f151fa56207af"
+  },
+  "kernelspec": {
+   "display_name": "Python 3.8.12 64-bit ('slgNM': conda)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.12"
+  },
+  "orig_nbformat": 4
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}

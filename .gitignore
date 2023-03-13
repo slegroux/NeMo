@@ -178,4 +178,29 @@ examples/neural_graphs/*.yml
 
 .hydra/
 nemo_experiments/
+*.arpa
+*.zip
+*.mp3
+*.wav
+*.nemo
+tutorials/tts/mayada*
+tutorials/tts/kareem*
+tutorials/tts/rishav*
+tutorials/tts/obama*
+tutorials/tts/omar*
+tutorials/tts/6097*
+tutorials/speaker_tasks/data/*
+tutorials/asr/lightning_logs/*
+examples/asr/exp/*
+examples/slgNM
+tutorials/tts/hifigan_ft/*
+tutorials/tts/tts_dataset_files/
+*.gz
+examples/asr/speech_to_text
+apex
+tutorials/asr/an4/
+examples/asr/nemo_examples/
+tutorials/asr/datasets/
+
+
 

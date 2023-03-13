@@ -1,0 +1,23 @@
+Adapting Monospeaker
+Pretrained: ljspeech
+
+Speaker     | min_dur | max_dur | max_tot_dur | steps | exp_dir      | Results |
+Rishav (32) | 1.0     |   10.0  | 5min        |  1000 | rishav_5min  | --      |
+            | 1.0     |   10.0  | 30min/10min |  1000 | rishav_30min | +       |
+            | 1.0     |   10.0  | 10min       |  2000 | rishav_600   | +++     |
+            | 1.0     |   30.0  | 30min       |  1000 | rishav_all   | ++      |
+Mayada (59) |
+Molly (14)  | 
+Kareem (15) |
+Aarna (9)   |
+
+Adapting Multispeaker
+pretrained: ljspeech
+
+Speaker | min_dur | max_dur | max_tot_dur  | steps | exp_dir      | Results |
+Rishav  |
+Kareem  |
+
+pretrained: libriTTS
+
+
