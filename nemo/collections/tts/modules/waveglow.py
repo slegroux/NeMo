@@ -11,10 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Tuple
+
 import torch
 
-from nemo.collections.tts.helpers.helpers import OperationMode, remove, split_view
 from nemo.collections.tts.modules.submodules import Invertible1x1Conv, WaveNet
+from nemo.collections.tts.parts.utils.helpers import OperationMode, remove, split_view
 from nemo.core.classes import Exportable, NeuralModule, typecheck
 from nemo.core.neural_types.elements import (
     AudioSignal,
@@ -175,7 +177,7 @@ class WaveGlowModule(NeuralModule, Exportable):
         )
         return {"spec": mel, "z": z}
 
-    def audio_to_normal_dist(self, *, spec: torch.Tensor, audio: torch.Tensor) -> (torch.Tensor, list, list):
+    def audio_to_normal_dist(self, *, spec: torch.Tensor, audio: torch.Tensor) -> Tuple[torch.Tensor, list, list]:
         #  Upsample spectrogram to size of audio
         spec = self.upsample(spec)
         assert spec.size(2) >= audio.size(1)
